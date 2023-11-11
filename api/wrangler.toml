@@ -1,4 +1,4 @@
-name = "api"
+name = "timesheet-api"
 main = "src/index.js"
 compatibility_date = "2023-10-30"
 
@@ -7,6 +7,11 @@ compatibility_date = "2023-10-30"
 # Docs: https://developers.cloudflare.com/workers/platform/environment-variables
 # [vars]
 # MY_VARIABLE = "production_value"
+
+[[d1_databases]]
+binding = "TSDB" # available in your Worker on env.TSDB
+database_name = "timesheets"
+database_id = "ad6b88df-07d0-4622-9323-0b8ed14d6376"
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/runtime-apis/kv
