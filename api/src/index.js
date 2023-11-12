@@ -8,39 +8,41 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
-async function punch(request, env, ctx) {
-	const reqval = await req.json();
+async function punch(request, env, ctx) { // non attomic commits, wors case scenario is that a users punch out is updated to after the new punch in, there is a check that new punch ins have to be after the last punch out, but there is no check for if the new punch out is before the following punch in YET
+	const reqval = await request.json();
 	const userID = reqval.userID;
 	const punchCatagory = reqval.punchCatagory;
 
-	const sql = `
-	BEGIN TRANSACTION;
-
-	WITH latest_punch AS (
-			SELECT punchID
+	const latestPunchSql = `
+			SELECT punchID, punchOutTime
 			FROM timeCardPunches
 			WHERE userID = ? AND punchCatagory = ?
 			ORDER BY punchInTime DESC
 			LIMIT 1
-	)
-	UPDATE timeCardPunches
-	SET punchOutTime = CURRENT_TIMESTAMP
-	WHERE punchID = (SELECT punchID FROM latest_punch) AND punchOutTime IS NULL;
-
-	INSERT INTO timeCardPunches (userID, punchCatagory)
-	SELECT ?, ?
-	WHERE NOT EXISTS (SELECT 1 FROM latest_punch WHERE punchOutTime IS NULL);
-
-	COMMIT;
 	`;
 
-	await env.TSDB.prepare(sql).run(userID, punchCatagory, userID, punchCatagory);
+	const latestPunch = await env.TSDB.prepare(latestPunchSql).bind(userID, punchCatagory).first();
+
+	if (latestPunch && latestPunch.punchOutTime === null) {
+			const updateSql = `
+					UPDATE timeCardPunches
+					SET punchOutTime = CURRENT_TIMESTAMP
+					WHERE punchID = ?
+			`;
+			await env.TSDB.prepare(updateSql).bind(latestPunch.punchID).run();
+	} else {
+			const insertSql = `
+					INSERT INTO timeCardPunches (userID, punchCatagory)
+					VALUES (?, ?)
+			`;
+			await env.TSDB.prepare(insertSql).bind(userID, punchCatagory).run();
+	}
 
 	return new Response("OK");
 }
 
 async function punches(request, env, ctx) {
-	const reqval = await req.json();
+	const reqval = await request.json();
 	const userID = reqval.userID;
 	const punchCatagory = reqval.punchCatagory;
 
@@ -80,7 +82,7 @@ async function update(request, env, ctx) {
 }
 
 async function seconds(request, env, ctx) {
-	const reqval = await req.json();
+	const reqval = await request.json();
 	const userID = reqval.userID;
 	const punchCatagory = reqval.punchCatagory;
 	const startDate = reqval.startDate;

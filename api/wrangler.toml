@@ -13,6 +13,9 @@ binding = "TSDB" # available in your Worker on env.TSDB
 database_name = "timesheets"
 database_id = "ad6b88df-07d0-4622-9323-0b8ed14d6376"
 
+[placement]
+mode = "smart"
+
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/runtime-apis/kv
 # [[kv_namespaces]]
